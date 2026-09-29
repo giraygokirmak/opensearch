@@ -1,5 +1,5 @@
-import type { Depth, RawResult } from "../schema";
-import { failure, messageFromError, type SourceSearchOutcome } from "./shared";
+import type { Depth, RawResult } from "../schema.js";
+import { failure, messageFromError, type SourceSearchOutcome } from "./shared.js";
 
 type SearxResult = {
   title?: string;

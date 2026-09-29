@@ -82,12 +82,31 @@ See the [Claude Code install guide](https://kagan-sh.github.io/opensearch/guides
 
 Add the plugin to `opencode.json`:
 
-```json
+```jsonc
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["@kagan-sh/opensearch"]
+  "plugins": [
+    "@kagan-sh/opensearch",
+    // with options:
+    {
+      "package": "@kagan-sh/opensearch",
+      "options": {
+        "opensearch": {
+          "sources": {
+            "session": true,
+            "web": { "enabled": true, "url": "http://localhost:8080" },
+            "code": true
+          },
+          "depth": "quick",
+          "synth": true
+        }
+      }
+    }
+  ]
 }
 ```
+
+The package supports both OpenCode V1 (`plugin` config key, top-level `opensearch` config) and V2 (`plugins` config key, `options.opensearch`). V1 and V2 share the same `opensearch` config shape; the entry vector differs.
 
 OpenCode installs npm plugins automatically at startup.
 

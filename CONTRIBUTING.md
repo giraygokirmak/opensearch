@@ -22,7 +22,7 @@ For local development, point `opencode.json` at the source entrypoint:
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["file:///absolute/path/to/opensearch/src/index.ts"]
+  "plugins": ["file:///absolute/path/to/opensearch/src/index.ts"]
 }
 ```
 

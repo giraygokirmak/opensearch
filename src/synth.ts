@@ -1,31 +1,12 @@
-import type { createOpencodeClient } from "@opencode-ai/sdk";
+import type { SynthClient, V1SynthClient } from "./synth/client.js";
+import { isV2SynthClient } from "./synth/client.js";
+import { SYNTH_PROMPT } from "./synth/prompt.js";
 import {
   type RawResult,
-  SynthesisSchema,
   type Synthesis,
+  SynthesisSchema,
   synthesisJsonSchema,
-} from "./schema";
-
-const PROMPT = `You are a synthesis engine for opensearch.
-
-Goal:
-- Produce a laconic direct answer to the user query.
-- Every factual claim must map to source IDs from the provided sources.
-- Set confidence by source agreement and evidence quality.
-- Suggest 2-3 concise followup queries.
-
-Output rules:
-- Return valid JSON only.
-- Use source IDs exactly as provided.
-- Do not invent sources.
-- Keep answer compact and concrete.`;
-
-function text(parts: Array<{ type: string; text?: string }>) {
-  return parts
-    .filter((part) => part.type === "text" || part.type === "reasoning")
-    .map((part) => part.text ?? "")
-    .join("\n");
-}
+} from "./schema.js";
 
 function parse(input: string) {
   const body = input.trim();
@@ -40,11 +21,34 @@ function parse(input: string) {
   }
 }
 
-export async function synthesize(
-  client: ReturnType<typeof createOpencodeClient>,
+function validate(body: unknown): Synthesis {
+  const parsed = SynthesisSchema.safeParse(body);
+  if (!parsed.success) {
+    throw new Error("Synthesis returned an invalid payload.");
+  }
+  return parsed.data;
+}
+
+function buildInput(raw: RawResult[], query: string) {
+  return `${SYNTH_PROMPT}\n\nUser query:\n${query}\n\nSources:\n${raw
+    .map(
+      (item, i) =>
+        `${i + 1}. id=${item.id} type=${item.type} title=${item.title}\nurl=${item.url ?? ""}\nrelevance=${item.relevance}\nsnippet=${item.snippet}`,
+    )
+    .join("\n\n")}`;
+}
+
+function text(parts: Array<{ type: string; text?: string }>) {
+  return parts
+    .filter((part) => part.type === "text" || part.type === "reasoning")
+    .map((part) => part.text ?? "")
+    .join("\n");
+}
+
+async function synthesizeV1(
+  client: V1SynthClient,
   directory: string,
-  raw: RawResult[],
-  query: string,
+  input: string,
 ): Promise<Synthesis> {
   const made = await client.session.create({
     query: { directory },
@@ -54,13 +58,6 @@ export async function synthesize(
   if (!id) {
     throw new Error("Unable to create a synthesis session.");
   }
-
-  const input = `${PROMPT}\n\nUser query:\n${query}\n\nSources:\n${raw
-    .map(
-      (item, i) =>
-        `${i + 1}. id=${item.id} type=${item.type} title=${item.title}\nurl=${item.url ?? ""}\nrelevance=${item.relevance}\nsnippet=${item.snippet}`,
-    )
-    .join("\n\n")}`;
 
   try {
     const req = {
@@ -83,15 +80,30 @@ export async function synthesize(
     if (!body) {
       throw new Error("Synthesis returned no JSON output.");
     }
-
-    const parsed = SynthesisSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new Error("Synthesis returned an invalid payload.");
-    }
-    return parsed.data;
+    return validate(body);
   } finally {
     await client.session
       .delete({ path: { id }, query: { directory } })
       .catch(() => true);
   }
+}
+
+export async function synthesize(
+  client: SynthClient,
+  directory: string,
+  raw: RawResult[],
+  query: string,
+): Promise<Synthesis> {
+  const input = buildInput(raw, query);
+
+  if (isV2SynthClient(client)) {
+    const generated = await client.generate.text({ prompt: input });
+    const body = parse(generated.text);
+    if (!body) {
+      throw new Error("Synthesis returned no JSON output.");
+    }
+    return validate(body);
+  }
+
+  return synthesizeV1(client, directory, input);
 }

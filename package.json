@@ -53,6 +53,8 @@
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@opencode-ai/plugin": "1.2.27",
     "@opencode-ai/sdk": "1.2.27",
+    "@opencode/plugin": "2.0.18",
+    "@opencode/client": "2.0.18",
     "zod": "^3.24.0",
     "zod-to-json-schema": "^3.24.0"
   },

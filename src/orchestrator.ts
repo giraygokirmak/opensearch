@@ -1,4 +1,4 @@
-import type { createOpencodeClient } from "@opencode-ai/sdk";
+import type { SessionSearchClient } from "./sources/session.js";
 import type {
   Config,
   RawResult,
@@ -8,11 +8,11 @@ import type {
   SourceError,
   SourceId,
   Synthesis,
-} from "./schema";
-import { searchCode } from "./sources/code";
-import { searchSessions } from "./sources/session";
-import { failure } from "./sources/shared";
-import { searchWeb } from "./sources/web";
+} from "./schema.js";
+import { searchCode } from "./sources/code.js";
+import { searchSessions } from "./sources/session.js";
+import { failure } from "./sources/shared.js";
+import { searchWeb } from "./sources/web.js";
 
 function clampUnit(value: number) {
   return Math.max(0, Math.min(1, value));
@@ -71,7 +71,7 @@ function createResult(input: {
 }
 
 export async function runSourceSearches(input: {
-  client?: ReturnType<typeof createOpencodeClient>;
+  client?: SessionSearchClient;
   directory: string;
   config: Config;
   query: string;

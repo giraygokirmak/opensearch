@@ -1,5 +1,5 @@
-import type { Config, SourceId } from "./schema";
-import { ConfigSchema, SOURCE_IDS } from "./schema";
+import type { Config, SourceId } from "./schema.js";
+import { ConfigSchema, SOURCE_IDS } from "./schema.js";
 
 function parseBoolean(name: string, value: string | undefined, fallback: boolean) {
   if (value === undefined) return fallback;
@@ -73,6 +73,17 @@ export function mcpDefaultConfig(): Config {
   };
 }
 
+function toError(parsed: { error: { issues: Array<{ path: Array<string | number>; message: string }> } }) {
+  const issues = parsed.error.issues
+    .map((issue) => `${formatIssuePath(issue.path)} ${issue.message}`)
+    .join("; ");
+  return new Error(`Invalid opensearch config: ${issues}`);
+}
+
+/**
+ * V1 plugin entrypoint: receives the whole OpenCode config and reads the
+ * top-level `opensearch` field.
+ */
 export function parsePluginConfig(input: unknown): Config | undefined {
   if (!input || typeof input !== "object" || !("opensearch" in input)) {
     return undefined;
@@ -81,10 +92,22 @@ export function parsePluginConfig(input: unknown): Config | undefined {
   const parsed = ConfigSchema.safeParse(input.opensearch);
   if (parsed.success) return parsed.data;
 
-  const issues = parsed.error.issues
-    .map((issue) => `${formatIssuePath(issue.path)} ${issue.message}`)
-    .join("; ");
-  throw new Error(`Invalid opensearch config: ${issues}`);
+  throw toError(parsed);
+}
+
+/**
+ * V2 plugin options: reads `opensearch` from the plugin's own options object
+ * (the `options` field of the plugin entry in `plugins`).
+ */
+export function parsePluginOptions(input: unknown): Config | undefined {
+  if (!input || typeof input !== "object" || !("opensearch" in input)) {
+    return undefined;
+  }
+
+  const parsed = ConfigSchema.safeParse(input.opensearch);
+  if (parsed.success) return parsed.data;
+
+  throw toError(parsed);
 }
 
 export function isSourceAvailable(config: Config, source: SourceId) {

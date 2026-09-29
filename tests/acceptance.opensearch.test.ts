@@ -1,30 +1,16 @@
-import { createOpencodeClient } from "@opencode-ai/sdk";
 import { spawn } from "node:child_process";
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
-import { OpensearchPlugin } from "../src/index";
+import { searchSessions } from "../src/sources/session";
 
 type State = {
   dir: string;
   base: string;
+  auth: string;
   proc: ReturnType<typeof spawn>;
-};
-
-type ProviderPayload = {
-  providers: Array<{
-    id: string;
-    models: Record<string, unknown>;
-  }>;
-  default?: Record<string, string>;
-};
-
-type MetadataCall = {
-  title?: string;
-  metadata?: Record<string, unknown>;
 };
 
 async function sleep(ms: number) {
@@ -46,100 +32,81 @@ async function port() {
   });
 }
 
-async function wait(base: string) {
-  for (const _ of Array.from({ length: 100 })) {
-    const ok = await fetch(`${base}/experimental/tool/ids`)
-      .then(async (res) => {
-        if (!res.ok) return false;
-        const ids = (await res.json()) as string[];
-        return ids.includes("opensearch");
-      })
-      .catch(() => false);
-    if (ok) return;
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-  throw new Error("opencode server did not become ready");
-}
-
 async function stop(proc: State["proc"]) {
   proc.kill();
-
   for (const _ of Array.from({ length: 20 })) {
     if (proc.exitCode !== null || proc.signalCode !== null) return;
     await sleep(100);
   }
-
   proc.kill("SIGKILL");
-
   for (const _ of Array.from({ length: 10 })) {
     if (proc.exitCode !== null || proc.signalCode !== null) return;
     await sleep(100);
   }
 }
 
-async function providerModel(base: string) {
-  const res = await fetch(`${base}/config/providers`);
-  const payload = (await res.json()) as ProviderPayload;
-  const provider = payload.providers.find(
-    (item) => Object.keys(item.models).length > 0,
-  );
-
-  if (!provider) throw new Error("no provider/model available");
-
-  return {
-    provider: provider.id,
-    model: payload.default?.[provider.id] ?? Object.keys(provider.models)[0],
-  };
-}
-
 async function boot(dir: string) {
   const n = await port();
   const base = `http://127.0.0.1:${n}`;
-  const data = join(dir, "xdg-data");
-  const cfgDir = join(dir, "xdg-config");
-  const cache = join(dir, "xdg-cache");
-  await mkdir(data, { recursive: true });
-  await mkdir(cfgDir, { recursive: true });
-  await mkdir(cache, { recursive: true });
-  const file = fileURLToPath(new URL("../src/index.ts", import.meta.url));
-  const cfg = JSON.stringify({ plugin: [pathToFileURL(file).href] });
+  let auth = "";
+
   const proc = spawn(
     "opencode",
     ["serve", "--port", `${n}`, "--hostname", "127.0.0.1"],
     {
-      env: {
-        ...process.env,
-        OPENCODE_CONFIG_CONTENT: cfg,
-        XDG_DATA_HOME: data,
-        XDG_CONFIG_HOME: cfgDir,
-        XDG_CACHE_HOME: cache,
-      },
+      env: { ...process.env, NO_COLOR: "1" },
       shell: false,
-      stdio: "ignore",
+      stdio: ["ignore", "pipe", "pipe"],
+      cwd: dir,
     },
   );
-  await wait(base);
-  return { dir, base, proc } satisfies State;
+
+  await new Promise<void>((resolve) => {
+    proc.stdout?.on("data", (d) => {
+      const m = String(d).match(/server password (\S+)/);
+      if (m) {
+        auth = "Basic " + Buffer.from("opencode:" + m[1]).toString("base64");
+        resolve();
+      }
+    });
+    setTimeout(resolve, 5000);
+  });
+
+  return { dir, base, auth, proc } satisfies State;
 }
 
-function runtime(dir: string) {
-  const calls: MetadataCall[] = [];
-
+function api(state: State) {
   return {
-    calls,
-    context: {
-      sessionID: "s",
-      messageID: "m",
-      agent: "build",
-      directory: dir,
-      worktree: dir,
-      abort: new AbortController().signal,
-      metadata(input: MetadataCall) {
-        calls.push(input);
-      },
-      ask: async () => {},
+    async raw(path: string, init?: RequestInit) {
+      return fetch(`${state.base}${path}`, {
+        ...init,
+        headers: {
+          Authorization: state.auth,
+          "content-type": "application/json",
+          ...(init?.headers ?? {}),
+        },
+      });
+    },
+    async call<T>(path: string, init?: RequestInit): Promise<T> {
+      const res = await this.raw(path, init);
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(`${path} failed: ${res.status} ${JSON.stringify(body)}`);
+      return body as T;
     },
   };
+}
+
+async function ready(state: State) {
+  for (const _ of Array.from({ length: 100 })) {
+    const ok = await fetch(`${state.base}/api/info`, {
+      headers: { Authorization: state.auth },
+    })
+      .then((res) => res.ok)
+      .catch(() => false);
+    if (ok) return;
+    await sleep(100);
+  }
+  throw new Error("opencode server did not become ready");
 }
 
 let state: State | undefined;
@@ -147,7 +114,6 @@ let state: State | undefined;
 afterEach(async () => {
   if (!state) return;
   await stop(state.proc);
-
   await rm(state.dir, {
     recursive: true,
     force: true,
@@ -157,91 +123,60 @@ afterEach(async () => {
   state = undefined;
 });
 
-describe("opensearch acceptance", () => {
-  it("registers opensearch tool", async () => {
+describe("opensearch V2 session source (live V2 server)", () => {
+  it("finds a matching session body through the full V2 client", async () => {
     const dir = await mkdtemp(join(tmpdir(), "opensearch-test-"));
     state = await boot(dir);
-    const res = await fetch(`${state.base}/experimental/tool/ids`);
-    const ids = (await res.json()) as string[];
-    expect(ids.includes("opensearch")).toBe(true);
-  });
+    await ready(state);
 
-  it("lists opensearch cleanly in OpenCode tool definitions", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "opensearch-test-"));
-    state = await boot(dir);
-
-    const choice = await providerModel(state.base);
-    const res = await fetch(
-      `${state.base}/experimental/tool?provider=${encodeURIComponent(choice.provider)}&model=${encodeURIComponent(choice.model)}`,
+    const info = await api(state).call<{ version?: string; data?: { version?: string } }>(
+      "/api/info",
     );
-    const tools = (await res.json()) as Array<{
-      id: string;
-      description: string;
-    }>;
-    const opensearch = tools.find((tool) => tool.id === "opensearch");
+    expect((info.data ?? info).version).toMatch(/^2\./);
 
-    expect(opensearch).toBeDefined();
-    expect(opensearch?.description).toContain("OpenSearch");
-    expect(opensearch?.description).toContain("evidence-backed search");
-  });
+    const marker = `opensearch-acceptance-${Date.now()}`;
+    const created = await api(state).call<{ id?: string; data?: { id?: string } }>(
+      "/api/session",
+      { method: "POST", body: JSON.stringify({ title: marker }) },
+    );
+    const session = created.data ?? created;
+    expect(session.id).toBeTruthy();
 
-  it("returns no results for unmatched query", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "opensearch-test-"));
-    state = await boot(dir);
-    const client = createOpencodeClient({
+    await api(state).call(`/api/session/${encodeURIComponent(session.id!)}/synthetic`, {
+      method: "POST",
+      body: JSON.stringify({ id: `msg_${Date.now()}`, text: `the marker is ${marker}` }),
+    });
+
+    // Full V2 HTTP client surface used by the session source.
+    const { OpenCode } = await import("@opencode/client/promise");
+    const client = OpenCode.make({
       baseUrl: state.base,
-      directory: dir,
+      headers: { Authorization: state.auth },
     });
 
-    const hooks = await OpensearchPlugin({
-      client,
-      directory: dir,
-      worktree: dir,
-      project: {} as never,
-      serverUrl: new URL(state.base),
-      $: {} as never,
-    });
-    await hooks.config?.({
-      opensearch: {
-        sources: { session: true, web: { enabled: false }, code: false },
-        depth: "quick",
-        synth: false,
-      },
-    } as never);
-
-    const tool = hooks.tool?.opensearch;
-    if (!tool) throw new Error("opensearch tool missing");
-    const execution = runtime(dir);
-    const out = await tool.execute(
-      { query: `missing-${Date.now()}`, sources: ["session"], depth: "quick" },
-      execution.context,
+    const outcome = await searchSessions(
+      client as never,
+      state.dir,
+      marker,
+      "quick",
     );
-    const body = JSON.parse(out) as {
-      status: string;
-      answer: string;
-      sources: unknown[];
-    };
 
-    expect(body.status).toBe("no_results");
-    expect(body.answer).toBe("No results found");
-    expect(body.sources).toHaveLength(0);
-    expect(execution.calls[0]).toMatchObject({
-      title: "OpenSearch // scanning session only",
-      metadata: {
-        brand: "OpenSearch",
-        phase: "searching",
-        source_summary: "session only",
-        status_note: "scanning session only",
-      },
+    expect(outcome.error).toBeUndefined();
+    expect(outcome.results.length).toBeGreaterThan(0);
+    expect(outcome.results[0]?.url).toBe(session.id);
+    expect(outcome.results[0]?.snippet).toContain(marker);
+    expect(outcome.results[0]?.relevance).toBeGreaterThan(0);
+  });
+
+  it("does not expose the removed V1 tool REST API", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "opensearch-test-"));
+    state = await boot(dir);
+    await ready(state);
+
+    // V2 removed the V1 tool-listing REST endpoints.
+    const res = await fetch(`${state.base}/api/tool`, {
+      headers: { Authorization: state.auth },
     });
-    expect(execution.calls[execution.calls.length - 1]).toMatchObject({
-      title: "OpenSearch // no matches",
-      metadata: {
-        brand: "OpenSearch",
-        phase: "completed",
-        status: "no_results",
-        source_summary: "session only",
-      },
-    });
+    expect(res.status).toBe(404);
   });
 });

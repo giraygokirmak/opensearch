@@ -17,14 +17,14 @@ Board up. Search available. Under five minutes.
 
 Add the package to `opencode.json`:
 
-```json
+```jsonc
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["@kagan-sh/opensearch"]
+  "plugins": ["@kagan-sh/opensearch"]
 }
 ```
 
-OpenCode installs npm plugins automatically at startup.
+OpenCode installs npm plugins automatically at startup. On OpenCode V1, use the legacy `plugin` key instead of `plugins`; the plugin supports both.
 
 ## 2. Enable optional web search
 

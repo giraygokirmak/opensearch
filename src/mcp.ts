@@ -6,14 +6,14 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { mcpDefaultConfig, resolveSources } from "./config";
+import { mcpDefaultConfig, resolveSources } from "./config.js";
 import {
   noResultsResult,
   noSourcesResult,
   rawResultsResult,
   runSourceSearches,
-} from "./orchestrator";
-import { SOURCE_IDS, type SourceId } from "./schema";
+} from "./orchestrator.js";
+import { SOURCE_IDS, type SourceId } from "./schema.js";
 
 function serialize(value: unknown): string {
   return JSON.stringify(value, null, 2);

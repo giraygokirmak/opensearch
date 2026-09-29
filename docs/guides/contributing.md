@@ -27,7 +27,7 @@ python3 -m pip install -r requirements-docs.txt
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["file:///absolute/path/to/opensearch/src/index.ts"]
+  "plugins": ["file:///absolute/path/to/opensearch/src/index.ts"]
 }
 ```
 

@@ -1,4 +1,4 @@
-import type { RawResult, SourceError, SourceId } from "../schema";
+import type { RawResult, SourceError, SourceId } from "../schema.js";
 
 export type SourceSearchOutcome = {
   source: SourceId;

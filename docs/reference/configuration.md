@@ -25,8 +25,36 @@ The current `web` provider is `SearXNG`.
 
 ## OpenCode plugin config shape
 
-```json
+The `opensearch` config shape is the same on both OpenCode versions.
+
+**V2** (native, `plugins` + `options`):
+
+```jsonc
 {
+  "plugins": [
+    {
+      "package": "@kagan-sh/opensearch",
+      "options": {
+        "opensearch": {
+          "sources": {
+            "session": true,
+            "web": { "enabled": true, "url": "http://localhost:8080" },
+            "code": true
+          },
+          "depth": "quick",
+          "synth": true
+        }
+      }
+    }
+  ]
+}
+```
+
+**V1** (legacy, `plugin` + top-level config):
+
+```jsonc
+{
+  "plugin": ["@kagan-sh/opensearch"],
   "opensearch": {
     "sources": {
       "session": true,

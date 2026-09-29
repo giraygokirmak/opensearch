@@ -102,6 +102,17 @@ export const ConfigSchema = z
   })
   .strict();
 
+export const ToolInputSchema = z
+  .object({
+    query: z.string().describe("What to search for"),
+    sources: z
+      .array(SourceIdSchema)
+      .optional()
+      .describe("Sources to query. Defaults to all enabled."),
+    depth: DepthSchema.optional().describe("Search depth. Default: quick"),
+  })
+  .strict();
+
 export type SourceId = z.infer<typeof SourceIdSchema>;
 export type Depth = z.infer<typeof DepthSchema>;
 export type ResultStatus = z.infer<typeof ResultStatusSchema>;
@@ -112,6 +123,7 @@ export type Result = z.infer<typeof ResultSchema>;
 export type Synthesis = z.infer<typeof SynthesisSchema>;
 export type RawResult = z.infer<typeof RawResultSchema>;
 export type Config = z.infer<typeof ConfigSchema>;
+export type ToolInput = z.infer<typeof ToolInputSchema>;
 
 export function resultJsonSchema() {
   return zodToJsonSchema(ResultSchema, "OpensearchResult");
@@ -119,4 +131,8 @@ export function resultJsonSchema() {
 
 export function synthesisJsonSchema() {
   return zodToJsonSchema(SynthesisSchema, "OpensearchSynthesis");
+}
+
+export function toolInputJsonSchema() {
+  return zodToJsonSchema(ToolInputSchema, "OpensearchToolInput");
 }
