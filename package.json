@@ -39,13 +39,14 @@
   ],
   "scripts": {
     "mcp": "bun run src/mcp.ts",
-    "build": "bun tsc",
-    "typecheck": "bun tsc --noEmit",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "docs:build": "mkdocs build --strict",
     "docs:serve": "mkdocs serve",
-    "check": "bun run typecheck && bun run test && bun run build",
+    "check": "npm run typecheck && npm run test && npm run build",
+    "prepare": "node scripts/prepare.js",
     "release": "semantic-release",
     "release:dry-run": "semantic-release --dry-run"
   },
