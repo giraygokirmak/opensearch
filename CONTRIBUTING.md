@@ -40,7 +40,11 @@ That runs:
 
 1. `bun run typecheck`
 2. `bun run test`
-3. `bun run build`
+
+Build the compiled output with `bun tsc` (a top-level `build` npm script is
+intentionally absent: its presence makes npm/OpenCode treat git-based installs
+as "needing preparation" and fail with `git dep preparation failed`, since the
+lifecycle/build step is blocked in restricted installer environments).
 
 Acceptance tests are integration-heavy and boot a real OpenCode server process.
 

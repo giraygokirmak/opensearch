@@ -38,7 +38,9 @@ bun run check
 mkdocs build --strict
 ```
 
-`bun run check` runs typecheck, tests, and build.
+`bun run check` runs typecheck and tests. Build with `bun tsc` (there is no
+top-level `build` npm script so git-based installs are not marked as needing
+preparation).
 
 ## Release
 
