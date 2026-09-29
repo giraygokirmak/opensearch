@@ -80,7 +80,9 @@ See the [Claude Code install guide](https://kagan-sh.github.io/opensearch/guides
 
 ### OpenCode (plugin)
 
-Add the plugin to `opencode.json`:
+Works with both OpenCode V2 and V1 from the same package — pick the config block for your version.
+
+**V2** — add to `opencode.json`:
 
 ```jsonc
 {
@@ -106,9 +108,27 @@ Add the plugin to `opencode.json`:
 }
 ```
 
-The package supports both OpenCode V1 (`plugin` config key, top-level `opensearch` config) and V2 (`plugins` config key, `options.opensearch`). V1 and V2 share the same `opensearch` config shape; the entry vector differs.
+**V1 (legacy)** — use the `plugin` key with top-level `opensearch` config; the config shape is identical:
+
+```jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["@kagan-sh/opensearch"],
+  "opensearch": {
+    "sources": {
+      "session": true,
+      "web": { "enabled": true, "url": "http://localhost:8080" },
+      "code": true
+    },
+    "depth": "quick",
+    "synth": true
+  }
+}
+```
 
 OpenCode installs npm plugins automatically at startup.
+
+> **V2 note:** inside the V2 plugin runtime, the plugin context cannot list sessions, so the `session` source reports itself as `unavailable` in `meta.sources_unavailable` instead of failing silently. Web and code sources, and AI synthesis, are unaffected. Session search works normally on V1.
 
 Full docs: **[kagan-sh.github.io/opensearch](https://kagan-sh.github.io/opensearch/)**. Web search uses a self-hosted `SearXNG` instance; setup lives in the docs.
 
