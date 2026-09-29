@@ -80,7 +80,7 @@ See the [Claude Code install guide](https://kagan-sh.github.io/opensearch/guides
 
 ### OpenCode (plugin)
 
-> **Not:** Bu fork (`giraygokirmak/opensearch`), OpenCode plugin repository'de yer almadığı için OpenCode kurulumunu **npm paket adı yerine GitHub üzerinden** yapmalısınız — OpenCode, npm paketlerini plugin repository'de listelenenlere göre çözümler.
+> **Note:** This fork (`giraygokirmak/opensearch`) is not listed in the OpenCode plugin repository, so install it **from GitHub instead of the npm package name** — OpenCode resolves npm packages against its plugin registry, and this fork is not indexed there.
 >
 > ```sh
 > opencode plugin add github:giraygokirmak/opensearch
