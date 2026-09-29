@@ -80,6 +80,12 @@ See the [Claude Code install guide](https://kagan-sh.github.io/opensearch/guides
 
 ### OpenCode (plugin)
 
+> **Not:** Bu fork (`giraygokirmak/opensearch`), OpenCode plugin repository'de yer almadığı için OpenCode kurulumunu **npm paket adı yerine GitHub üzerinden** yapmalısınız — OpenCode, npm paketlerini plugin repository'de listelenenlere göre çözümler.
+>
+> ```sh
+> opencode plugin add github:giraygokirmak/opensearch
+> ```
+
 Works with both OpenCode V2 and V1 from the same package — pick the config block for your version.
 
 **V2** — add to `opencode.json`:
@@ -88,10 +94,10 @@ Works with both OpenCode V2 and V1 from the same package — pick the config blo
 {
   "$schema": "https://opencode.ai/config.json",
   "plugins": [
-    "@kagan-sh/opensearch",
+    "github:giraygokirmak/opensearch",
     // with options:
     {
-      "package": "@kagan-sh/opensearch",
+      "package": "github:giraygokirmak/opensearch",
       "options": {
         "opensearch": {
           "sources": {
