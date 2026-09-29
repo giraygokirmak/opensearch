@@ -30,13 +30,9 @@ Works as a **Claude Code plugin**, a **standalone MCP server**, and an **OpenCod
 
 ### Claude Code (plugin)
 
-Install from the plugin directory for one-click setup with built-in skills and search command:
+> **Note:** This fork is not published to Anthropic's official plugin marketplace. To use the fork, load the plugin directory directly from your local clone.
 
-```bash
-/plugin install opensearch
-```
-
-Or install from a local checkout for development:
+From your local fork checkout:
 
 ```bash
 claude --plugin-dir ./plugin
@@ -46,10 +42,10 @@ The plugin bundles the MCP server, a SKILL.md (so Claude knows when to search au
 
 ### Claude Code (MCP — standalone)
 
-If you prefer a standalone MCP server (also works with Cursor, Windsurf, etc.):
+If you prefer a standalone MCP server (also works with Cursor, Windsurf, etc.), install the fork from GitHub:
 
 ```bash
-claude mcp add opensearch -- npx -y @kagan-sh/opensearch
+claude mcp add opensearch -- npx -y github:giraygokirmak/opensearch
 ```
 
 To enable web search via SearXNG:
@@ -57,7 +53,7 @@ To enable web search via SearXNG:
 ```bash
 claude mcp add opensearch \
   -e OPENSEARCH_WEB_URL=http://localhost:8080 \
-  -- npx -y @kagan-sh/opensearch
+  -- npx -y github:giraygokirmak/opensearch
 ```
 
 Or add it to `.mcp.json` in your project root:
@@ -67,7 +63,7 @@ Or add it to `.mcp.json` in your project root:
   "mcpServers": {
     "opensearch": {
       "command": "npx",
-      "args": ["-y", "@kagan-sh/opensearch"],
+      "args": ["-y", "github:giraygokirmak/opensearch"],
       "env": {
         "OPENSEARCH_WEB_URL": "http://localhost:8080"
       }

@@ -2,7 +2,7 @@
   "mcpServers": {
     "opensearch": {
       "command": "npx",
-      "args": ["-y", "@kagan-sh/opensearch"],
+      "args": ["-y", "github:giraygokirmak/opensearch"],
       "env": {
         "OPENSEARCH_WEB_URL": ""
       }
