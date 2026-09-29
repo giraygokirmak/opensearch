@@ -40,7 +40,7 @@ jobs:
         run: bun run test
 
       - name: Build
-        run: bun run build
+        run: bun tsc
 
   docs:
     runs-on: ubuntu-latest
